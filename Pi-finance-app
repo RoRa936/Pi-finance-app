@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مستشار Pi المالي</title>
+    <script src="https://sdk.minepi.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="max-w-md mx-auto p-6">
+        <header class="text-center py-8">
+            <h1 class="text-2xl font-bold text-purple-800">خبير الاستشارات المالية</h1>
+            <p class="text-gray-600 mt-2">نظام دفع آمن عبر Pi Network</p>
+        </header>
+
+        <main class="bg-white rounded-2xl shadow-xl p-6">
+            <div id="auth-section">
+                <button onclick="login()" id="btn-login" class="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition">
+                    تسجيل الدخول بـ Pi
+                </button>
+            </div>
+
+            <div id="app-section" class="hidden">
+                <p class="mb-4 text-sm text-green-600">مرحباً: <span id="username" class="font-bold"></span></p>
+                <label class="block mb-2 text-gray-700">سؤالك المالي:</label>
+                <textarea id="user-question" rows="4" class="w-full border p-3 rounded-lg mb-4 focus:ring-2 focus:ring-purple-500 outline-none" placeholder="كيف استثمر مدخراتي؟"></textarea>
+                
+                <button onclick="createPayment()" class="w-full bg-green-500 text-white py-3 rounded-lg font-bold hover:bg-green-600 transition">
+                    دفع (1 Pi) وإرسال السؤال
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const Pi = window.Pi;
+        Pi.init({ version: "2.0", sandbox: true }); // غيرها لـ false عند الإطلاق الرسمي
+
+        async function login() {
+            try {
+                const scopes = ['username', 'payments'];
+                const auth = await Pi.authenticate(scopes, onIncompletePaymentFound);
+                document.getElementById('username').innerText = auth.user.username;
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('app-section').classList.remove('hidden');
+            } catch (err) {
+                alert("يرجى المحاولة من داخل Pi Browser فقط");
+            }
+        }
+
+        function onIncompletePaymentFound(payment) {
+            console.log("يوجد دفع معلق:", payment);
+        }
+
+        async function createPayment() {
+            const question = document.getElementById('user-question').value;
+            if(!question) return alert("اكتب سؤالك أولاً!");
+
+            Pi.createPayment({
+                amount: 1,
+                memo: "استشارة مالية: " + question.substring(0, 20),
+                metadata: { question: question }
+            }, {
+                onReadyForServerApproval: (paymentId) => {
+                    console.log("في انتظار موافقة السيرفر...", paymentId);
+                    // هنا ترسل المعرف للسيرفر الخاص بك ليوافق عليه عبر API الخاص بـ Pi
+                },
+                onReadyForServerCompletion: (paymentId, txid) => {
+                    alert("تم الدفع بنجاح! رقم العملية: " + txid);
+                },
+                onCancel: (paymentId) => console.log("تم الإلغاء"),
+                onError: (error, payment) => console.error("خطأ!", error)
+            });
+        }
+    </script>
+</body>
+</html>
